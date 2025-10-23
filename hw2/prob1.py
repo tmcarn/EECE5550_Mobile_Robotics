@@ -1,20 +1,26 @@
 import numpy as np
-# from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
+from matplotlib.patches import Circle, Ellipse
 
 class EKFSim():
     def __init__(self):
         self.t = 0
 
         # Initial States
-        self.true_pos = np.array([[0,0]]).T
+        self.true_pos = np.array([[0,10]]).T
         self.landmarks = np.array([[5,5],[-5, 5]]) #[(l_1x,l_1y), l_2x, l2_y)]
 
-        self.estim_pos = np.array([[0,0]]).T # Column Vector for Position        
+        self.estim_pos = np.array([[0,10]]).T # Column Vector for Position        
 
         # Covariance Matricies
-        self.sigma = np.eye(2)   # Final Positional Uncertainty
+        self.estim_sigma = np.eye(2)   # Estimated Position Uncertainty
         self.R = 0.1 * np.eye(2) # Process Uncertainty
         self.Q = 0.5 * np.eye(2) # Measurement Uncertainty
+
+        self.true_pos_history = []
+        self.prior_pos_history = []
+        self.estim_pos_history = []
+        self.estim_sigma_history = []
 
     def update_true_pos(self, t):
         process_noise = np.random.multivariate_normal(np.zeros(2), self.R).reshape(-1, 1)
@@ -49,7 +55,7 @@ class EKFSim():
     
     def state_propagation_step(self, pos, t):
         dead_rek_pos = pos + self.get_vel(t)
-        dead_rek_sigma = self.sigma + self.R
+        dead_rek_sigma = self.estim_sigma + self.R
         return dead_rek_pos, dead_rek_sigma
 
 
@@ -63,7 +69,7 @@ class EKFSim():
         # Estimate Position based on Kalman Gain and Innovation
         self.estim_pos = dead_rek_pos + k_gain @ (innovation)
         # Calculate Certainty
-        self.sigma = (np.eye(2) - k_gain @ H) @ dead_rek_sigma
+        self.estim_sigma = (np.eye(2) - k_gain @ H) @ dead_rek_sigma
 
 
     def get_vel(self, t):
@@ -90,12 +96,73 @@ class EKFSim():
             dead_rek_pos, dead_rek_sigma = self.state_propagation_step(self.estim_pos, t)
             # Correction Step
             self.correction_step(dead_rek_pos,dead_rek_sigma)
-            print(f"Estimated Position:{self.estim_pos}")
-            print(f"True Position: {self.true_pos}")
+
+            self.estim_pos_history.append(self.estim_pos)
+            self.estim_sigma_history.append(self.estim_sigma)
+            self.true_pos_history.append(self.true_pos)
+
+        self.estim_pos_history = np.array(self.estim_pos_history).squeeze()
+        self.estim_sigma_history = np.array(self.estim_sigma_history).squeeze()
+        self.true_pos_history = np.array(self.true_pos_history).squeeze()
+
+    def viz(self):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        l1 = Circle((-5, 5), radius=1.0, facecolor=(0, 0, 1, 0.1), edgecolor=(0, 0, 1, 1.0))
+        ax.add_patch(l1)
+        l2 = Circle((5, 5), radius=1.0, facecolor=(0, 0, 1, 0.1), edgecolor=(0, 0, 1, 1.0))
+        ax.add_patch(l2)
+
+        def get_cov_ellipse(cov, n_std=3):
+                eig_vals, eig_vecs = np.linalg.eig(cov)
+
+                # Sort Eig Vals/Vectors
+                order = np.argsort(eig_vals)[::-1] # Decending Order (major axis first)
+                eig_vals = eig_vals[order]
+                eig_vecs = eig_vecs[:, order]
+
+                major = 2 * n_std * np.sqrt(eig_vals[0])
+                minor = 2 * n_std * np.sqrt(eig_vals[1])
+                angle = np.degrees(np.arctan2(eig_vecs[1, 0], eig_vecs[0, 0]))
+
+                return major, minor, angle
+
+        for i in range(0, self.true_pos_history.shape[0], 4): # Intervals of t=5
+            true_pos = self.true_pos_history[i]
+            estim_pos = self.estim_pos_history[i]
+            estim_sigma = self.estim_sigma_history[i]
             
+            major, minor, angle = get_cov_ellipse(estim_sigma)
+
+            true_pos_plot = Circle(true_pos, radius=0.4, facecolor="darkgreen")
+            estim_pos_plot = Circle(estim_pos, radius=0.1, facecolor="orange")
+            estim_certainty_plot = Ellipse(estim_pos, width=major, height=minor, angle=angle, facecolor="orange", alpha=0.2)
+            
+            ax.add_patch(true_pos_plot)
+            ax.text(true_pos[0],  # Label Point with time step
+                    true_pos[1], 
+                    f"t={i}",
+                    fontsize=5,
+                    fontweight='bold', 
+                    color='white',
+                    ha='center',        
+                    va='center'
+                    )
+            ax.add_patch(estim_pos_plot)
+            ax.add_patch(estim_certainty_plot)
+            
+
+        # Must set axis limits when using patches
+        ax.set_xlim(-15, 15)
+        ax.set_ylim(-5, 15)
+        ax.set_aspect('equal')
+        plt.savefig("plots/prob1_plot.png")
+        plt.show()
+    
+
 
             
 
 # Unit Tests:
 sim = EKFSim()
 sim.run()
+sim.viz()
