@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, FFMpegWriter
 import numpy as np
 
 class ICPAnimator:
@@ -14,6 +14,7 @@ class ICPAnimator:
         self.R_history = R_history
         self.t_history = t_history
         self.corresp_history = corresp_history
+        
 
         self.fig = plt.figure(figsize=(10, 8))
         self.ax = self.fig.add_subplot(111, projection='3d')
@@ -29,19 +30,19 @@ class ICPAnimator:
         self.ax.scatter(self.X[:, 0], self.X[:, 1], self.X[:, 2],
                        c='blue', marker='.', s=1, alpha=0.6, label='Source')
         
-        corresp_idx = np.array(self.corresp_history[0])
+        # corresp_idx = np.array(self.corresp_history[0])
 
-        x_corresp_idx = corresp_idx[:,0]
-        y_corresp_idx = corresp_idx[:,1]
+        # x_corresp_idx = corresp_idx[:,0]
+        # y_corresp_idx = corresp_idx[:,1]
 
-        x_corresp_points = self.X[x_corresp_idx]
-        y_corresp_points = self.Y[y_corresp_idx]
+        # x_corresp_points = self.X[x_corresp_idx]
+        # y_corresp_points = self.Y[y_corresp_idx]
         
-        for i in range(y_corresp_points.shape[0]):
-            self.ax.plot([x_corresp_points[i, 0], y_corresp_points[i, 0]],
-                    [x_corresp_points[i, 1], y_corresp_points[i, 1]],
-                    [x_corresp_points[i, 2], y_corresp_points[i, 2]],
-                    'g-', linewidth=0.5, alpha=0.5)
+        # for i in range(y_corresp_points.shape[0]):
+        #     self.ax.plot([x_corresp_points[i, 0], y_corresp_points[i, 0]],
+        #             [x_corresp_points[i, 1], y_corresp_points[i, 1]],
+        #             [x_corresp_points[i, 2], y_corresp_points[i, 2]],
+        #             'g-', linewidth=0.5, alpha=0.5)
         
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -75,7 +76,7 @@ class ICPAnimator:
                        c='blue', marker='.', s=1, alpha=0.6, label='Source')
         
         # Plot correspondences
-        corresp_idx = np.array(self.corresp_history[frame])
+        corresp_idx = np.array(self.corresp_history[frame-1])
 
         x_corresp_idx = corresp_idx[:,0]
         y_corresp_idx = corresp_idx[:,1]
@@ -111,5 +112,10 @@ class ICPAnimator:
                            interval=interval, 
                            repeat=repeat,
                            blit=False)
+        
+        # Save as MP4
+        writer = FFMpegWriter(fps=5, bitrate=1800)
+        anim.save("plots/prob2_animation.mp4", writer=writer)
+
         plt.show()
         return anim

@@ -4,8 +4,9 @@ Iterative Closest Point Implementation
 
 import numpy as np
 import math
-from tqdm import tqdm
+from scipy.spatial import KDTree
 from icp_animation import ICPAnimator
+from matplotlib import pyplot as plt
 
 
 class ICP():
@@ -21,11 +22,13 @@ class ICP():
         self.max_distance = 0.25
         self.num_iters = 30
 
-        X_path = "point_cloud_data/pclX.txt"
-        Y_path = "point_cloud_data/pclY.txt"
+        X_path = "/Users/theo/EECE 5550/hw2/point_cloud_data/pclX.txt"
+        Y_path = "/Users/theo/EECE 5550/hw2/point_cloud_data/pclY.txt"
 
         self.X = self.parse_point_cloud(X_path)
         self.Y = self.parse_point_cloud(Y_path)
+
+        self.Y_kdtree = KDTree(self.Y)
 
     def parse_point_cloud(self, pcl_path):
         '''
@@ -47,7 +50,7 @@ class ICP():
         X_trans = (self.R @ self.X.T).T + self.t
 
         for x_idx, x in enumerate(X_trans):
-            closest_point, distance, y_idx = self.find_closest_point(x)
+            distance, y_idx = self.find_closest_point(x)
             if math.sqrt(distance) < self.max_distance:
                 corresp_idx.append([x_idx, y_idx])
 
@@ -59,12 +62,8 @@ class ICP():
         '''
         Returns the point in set Y that is closest to input point in set X with current R and t parameters
         '''
-        difference = self.Y - x_trans
-        distances = np.linalg.norm(difference, axis=1)
-        cp_idx = np.argmin(distances)
-        closest_point = self.Y[cp_idx]
-        cp_distance = distances[cp_idx]
-        return closest_point, cp_distance, cp_idx
+        cp_distance, cp_idx = self.Y_kdtree.query(x_trans)
+        return cp_distance, cp_idx
     
     def compute_optimal_rigid_registration(self, corresp_idx):
         '''
@@ -80,10 +79,10 @@ class ICP():
         y_centroid_dist = y_corresp - y_centroid
 
         K = x_corresp.shape[0]
+        W = y_centroid_dist.T @ x_centroid_dist / K
 
-        W = np.dot(y_centroid_dist.T, x_centroid_dist) / K
-
-        U, S, V = np.linalg.svd(W)
+        U, S, Vt = np.linalg.svd(W)
+        V = Vt.T
 
         det = np.linalg.det(U @ V)
         diag_vec = np.ones(U.shape[1])
@@ -101,7 +100,8 @@ class ICP():
         difference = self.Y - X_trans
         distance = np.linalg.norm(difference) ** 2
         avg_dist = np.mean(distance)
-        return np.sqrt(avg_dist)
+        rmse = np.sqrt(avg_dist)
+        return rmse
 
     def viz(self):
         self.R_history = np.array(self.R_history)
@@ -111,12 +111,21 @@ class ICP():
 
         animator.animate()
 
+        def plot_rmse():
+            fig, ax = plt.subplots()
+
+            ax.plot(self.rmse_history)
+            plt.show()
+
+        plot_rmse()
+
+
 
     def run(self):
-        for i in tqdm(range(self.num_iters)):
+        for i in range(self.num_iters):
             corresp_idx = self.estimate_correspondences()
             self.compute_optimal_rigid_registration(corresp_idx)
-            self.rmse()
+            print(self.rmse())
         
         self.viz()
 
