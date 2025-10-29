@@ -65,7 +65,7 @@ class ParticleFilter():
         omega_dot[0,2] = x_dot
         omega_dot[1,0] = theta_dot
 
-        dead_rek = x_i + expm(dt * omega_dot)
+        dead_rek = x_i @ expm(dt * omega_dot)
 
         return dead_rek
     
@@ -75,8 +75,7 @@ class ParticleFilter():
 
         prior_position = X_prior[:, :2, 2] # Extracts translation from each SE(2) matrix
         innovation = np.linalg.norm(obs_measurement - prior_position, axis=1) # Calculates l2 norm between observed measurement and predicted measurement
-        importance_factor = -(np.exp(innovation) ** 2) / (2 * (self.sigma_p ** 2))
-
+        importance_factor = np.exp(-(innovation ** 2) / (2 * (self.sigma_p ** 2)))
         # Normalize Importance Factors
         importance_factor = importance_factor/np.sum(importance_factor)
 
@@ -103,29 +102,78 @@ class ParticleFilter():
             prev_t = t
 
         return X_prior_history
-            
+    
+    def run_filter(self, cmd_wheel_vels, time_steps):
+        prev_t = 0
+        X_posterior_history = np.zeros((time_steps.shape[0], self.num_samples, 3, 3))
+
+        for i,t in enumerate(time_steps):
+            self.X_prior = self.propagation(self.X_posterior, prev_t, t, cmd_wheel_vels)
+            self.X_posterior = self.measurement_update(self.X_prior, self.measurements[i])
+            X_posterior_history[i] = self.X_posterior
+            prev_t = t
+        
+        return X_posterior_history
+
 
     def calculate_stats(self, X):
-        pass
+        '''
+        Given particle set X, returns the mean and covariance of the set
+        '''
+        X_pos = X[:, 0:2, 2]
+        mean = np.mean(X_pos, axis=0)
+
+        centered = X_pos - mean
+        cov = (centered.T @ centered) / self.num_samples
+
+        return mean, cov
+    
+    def save_stats_to_file(self, mean, cov, time_step, fname):
+        """
+        Save mean and covariance statistics to a text file
+        """
+        path = os.path.join("stats", fname)
+        
+        with open(fname, 'a') as f:
+            f.write(f"Statistics at t={time_step}\n")
+            f.write(f"Number of particles: {self.num_samples}\n\n")
+            
+            f.write(f"Mean Position:\n")
+            f.write(f"  x: {mean[0]:.6f}\n")
+            f.write(f"  y: {mean[1]:.6f}\n\n")
+            
+            f.write(f"Covariance Matrix:\n")
+            f.write(f"  [{cov[0,0]:.6f}, {cov[0,1]:.6f}]\n")
+            f.write(f"  [{cov[1,0]:.6f}, {cov[1,1]:.6f}]\n\n")
+            
+            f.write(f"Variance:\n")
+            f.write(f"  σ²_x: {cov[0,0]:.6f}\n")
+            f.write(f"  σ²_y: {cov[1,1]:.6f}\n")
+            f.write(f"  σ_xy: {cov[0,1]:.6f}\n")
 
     def plot_particles(self, X_history, time_steps, title, fname):
         # Initalize Plot
         fig, ax = plt.subplots(figsize=(8, 6))
 
-        ax.scatter(0,0, s=200, label="t=0")
+        ax.scatter(0,0, label="t=0")
 
         for i in range(X_history.shape[0]):
             X = X_history[i]
+
+            mean, cov = self.calculate_stats(X)
+            stats_fname = fname.split('_')[0]+"_stats.txt"
+            self.save_stats_to_file(mean, cov, time_steps[i], stats_fname)
 
             x = X[:, 0, 2]
             y = X[:, 1, 2]
             theta = np.arctan2(X[:, 1, 0], X[:, 0, 0])
     
             # Calculate heading direction
-            dx = np.cos(theta)
-            dy = np.sin(theta)
+            # dx = np.cos(theta)
+            # dy = np.sin(theta)
 
             ax.scatter(x, y, label=f"t={time_steps[i]}", alpha=0.1)
+            ax.scatter(mean[0], mean[1], alpha=1, c='black')
             # ax.quiver(x, y, dx, dy,
             #     alpha=0.25, scale_units='xy', 
             #     angles='xy', width=0.003)
@@ -141,17 +189,14 @@ class ParticleFilter():
         plt.show()
 
 
-
-
 # Plot particle poses at t=10 after applying motion model
 pf = ParticleFilter()
 cmd_vels = np.array([2.0, 1.5]) # [right_wheel, left_wheel]
 time_steps = np.array([10])
 X_prior_history = pf.run_propagation(cmd_vels, time_steps)
 title = "Particle Poses at t=10 after applying Motion Model"
-fname = "Q3E_particles_motion_model.png"
+fname = "prob3e_particles_motion_model.png"
 pf.plot_particles(X_prior_history, time_steps, title, fname)
-
 
 # Plot particle poses at for t=[5,10,15,20] after applying motion model recursively
 pf = ParticleFilter()
@@ -159,5 +204,15 @@ cmd_vels = np.array([2.0, 1.5]) # [right_wheel, left_wheel]
 time_steps = np.array([5,10,15,20])
 X_prior_history = pf.run_propagation(cmd_vels, time_steps)
 title = "Particle Poses at t=[5,10,15,20] after applying Motion Model Recursively"
-fname = "Q3F_particles_motion_model.png"
+fname = "prob3f_particles_motion_model.png"
 pf.plot_particles(X_prior_history, time_steps, title, fname)
+
+# Plot particle poses at for t=[5,10,15,20] after applying motion model recursively
+pf = ParticleFilter()
+cmd_vels = np.array([2.0, 1.5]) # [right_wheel, left_wheel]
+time_steps = np.array([5,10,15,20])
+X_posterior_history = pf.run_filter(cmd_vels, time_steps)
+title = "Particle Poses at t=[5,10,15,20] after applying Particle Filter"
+fname = "prob3g_particle_filter.png"
+pf.plot_particles(X_posterior_history, time_steps, title, fname)
+pf.calculate_stats(X_posterior_history[0])
