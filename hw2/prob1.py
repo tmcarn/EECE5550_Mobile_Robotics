@@ -9,13 +9,13 @@ class EKFSim():
         self.dt = 0.5
 
         # Initial States
-        self.true_pos = np.array([[0,10]]).T
-        self.landmarks = np.array([[5,5],[-5, 5]]) #[[l_1x,l_1y], [l_2x, l2_y]]
+        self.true_pos = np.array([0,0]) # shape: (2,)
+        self.landmarks = np.array([[-5,5],[5, 5]]) # [[l_1x,l_1y], [l_2x, l2_y]]
 
-        self.estim_pos = np.array([[0,10]]).T # Column Vector for Position        
+        self.estim_pos = np.array([0,0]) # shape: (2,)        
 
         # Covariance Matricies
-        self.estim_sigma = np.eye(2)   # Estimated Position Uncertainty
+        self.estim_sigma = np.eye(2) # Estimated Position Uncertainty
         self.R = 0.1 * np.eye(2) # Process Uncertainty
         self.Q = 0.5 * np.eye(2) # Measurement Uncertainty
 
@@ -33,7 +33,7 @@ class EKFSim():
         Returns:
             self.true_pos (2,): updated true position
         '''
-        process_noise = np.random.multivariate_normal(np.zeros(2), self.R).reshape(-1, 1)
+        process_noise = np.random.multivariate_normal(np.zeros(2), self.R)
         self.true_pos = self.true_pos + (self.get_vel(t) * self.dt) + process_noise
 
     
@@ -44,22 +44,22 @@ class EKFSim():
 
         L2 Distance (optionally) plus sensor noise delta ~ N (0, Q)
         '''
-        pos_mat = np.concatenate([pos.T, pos.T], axis=0)
-        difference_vectors = pos_mat - self.landmarks
-        measurement = np.linalg.norm(difference_vectors, axis=1, keepdims=True)
+        # pos_mat = np.concatenate([pos.T, pos.T], axis=0)
+        difference_vectors = pos - self.landmarks
+        measurement = np.linalg.norm(difference_vectors, axis=1)
 
         if noisy:
-            measurement_noise = np.array([np.random.multivariate_normal(np.zeros(2), self.Q)]).T
+            measurement_noise = np.random.multivariate_normal(np.zeros(2), self.Q)
             return measurement + measurement_noise
-        else:
-            return measurement
+        
+        return measurement
         
     
     def get_measurement_jacobian(self, pos):
-        pos_mat = np.concatenate([pos.T, pos.T], axis=0)
-        difference_vectors = pos_mat - self.landmarks
+        # pos_mat = np.concatenate([pos.T, pos.T], axis=0)
+        difference_vectors = pos - self.landmarks
         distances = self.measurment_model(pos, noisy=False)
-        H = difference_vectors / distances  # Broadcasting: (2,2) / (2,1) = (2,2)
+        H = difference_vectors / distances[:, np.newaxis]
         return H
 
     
@@ -87,15 +87,15 @@ class EKFSim():
         Defines a stepwise function for velocity
         '''
         if 0<=t<=10:
-            return np.array([[1,0]]).T
+            return np.array([1,0])
         elif 10<t<=20:
-            return np.array([[0,-1]]).T
+            return np.array([0,-1])
         elif 20<t<=30:
-            return np.array([[-1,0]]).T
+            return np.array([-1,0])
         elif 30<t<=40:
-            return np.array([[0,1]]).T
+            return np.array([0,1])
         else:
-            print("'t' is out of bounds")
+            print(f"t={t} is out of bounds")
             raise Exception
         
     def run(self):
@@ -119,10 +119,30 @@ class EKFSim():
 
     def viz(self):
         fig, ax = plt.subplots(figsize=(10, 6))
-        l1 = Circle((-5, 5), radius=1.0, facecolor=(0, 0, 1, 0.1), edgecolor=(0, 0, 1, 1.0))
+
+        l1 = Circle(self.landmarks[0], radius=1.0, facecolor="tab:green")
         ax.add_patch(l1)
-        l2 = Circle((5, 5), radius=1.0, facecolor=(0, 0, 1, 0.1), edgecolor=(0, 0, 1, 1.0))
+        ax.text(self.landmarks[0,0],  # Label Point with time step
+                    self.landmarks[0,1], 
+                    f"L_1",
+                    fontsize=5,
+                    fontweight='bold', 
+                    color='white',
+                    ha='center',        
+                    va='center'
+                    )
+        
+        l2 = Circle(self.landmarks[1], radius=1.0, facecolor="tab:green")
         ax.add_patch(l2)
+        ax.text(self.landmarks[1,0],  # Label Point with time step
+                    self.landmarks[1,1], 
+                    f"L_2",
+                    fontsize=5,
+                    fontweight='bold', 
+                    color='white',
+                    ha='center',        
+                    va='center'
+                    )
 
         def get_cov_ellipse(cov, n_std=3):
                 eig_vals, eig_vecs = np.linalg.eig(cov)
@@ -138,36 +158,42 @@ class EKFSim():
 
                 return major, minor, angle
 
-        for i in range(0, self.true_pos_history.shape[0], 8): # Intervals of t=5
+        for i in range(0, self.true_pos_history.shape[0], 8): # Intervals of t=4
             true_pos = self.true_pos_history[i]
             estim_pos = self.estim_pos_history[i]
             estim_sigma = self.estim_sigma_history[i]
             
             major, minor, angle = get_cov_ellipse(estim_sigma)
 
-            true_pos_plot = Circle(true_pos, radius=0.4, facecolor="darkgreen")
-            estim_pos_plot = Circle(estim_pos, radius=0.1, facecolor="orange")
+            true_pos_plot = Circle(true_pos, radius=0.5, facecolor="purple")
             estim_certainty_plot = Ellipse(estim_pos, width=major, height=minor, angle=angle, facecolor="orange", alpha=0.2)
             
-            ax.add_patch(true_pos_plot)
+            # ax.add_patch(true_pos_plot)
+            ax.scatter(true_pos[0], true_pos[1], c="tab:blue", s=200)
             ax.text(true_pos[0],  # Label Point with time step
                     true_pos[1], 
-                    f"t={i/2}",
+                    f"t={int(i/2)}",
                     fontsize=5,
                     fontweight='bold', 
                     color='white',
                     ha='center',        
                     va='center'
                     )
-            ax.add_patch(estim_pos_plot)
+            
+            ax.scatter(estim_pos[0], estim_pos[1], c="orange")
             ax.add_patch(estim_certainty_plot)
             
 
         # Must set axis limits when using patches
-        ax.set_xlim(-15, 15)
-        ax.set_ylim(-5, 15)
+        # ax.axis("off")
+        ax.grid()
+        ax.set_axisbelow(True)
+        
+        ax.set_xlim((-10,15))
+        ax.set_ylim((-15,10))
         ax.set_aspect('equal')
-        plt.savefig("plots/prob1_plot.png")
+        ax.set_title("EFK Localization with Landmarks")
+        plt.savefig("plots/prob1_plot.png", dpi=300)
         plt.show()
     
 

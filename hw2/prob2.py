@@ -16,7 +16,7 @@ class ICP():
         self.t = np.zeros(3)
         self.R_history = [self.R]
         self.t_history = [self.t]
-        self.corresp_history = []
+        self.rmse_history = []
 
         # Set Hyperparameters
         self.max_distance = 0.25
@@ -27,6 +27,9 @@ class ICP():
 
         self.X = self.parse_point_cloud(X_path)
         self.Y = self.parse_point_cloud(Y_path)
+
+        # Initial Error
+        self.rmse_history.append(self.rmse())
 
         self.Y_kdtree = KDTree(self.Y)
 
@@ -54,7 +57,6 @@ class ICP():
             if math.sqrt(distance) < self.max_distance:
                 corresp_idx.append([x_idx, y_idx])
 
-        self.corresp_history.append(corresp_idx)
         return np.array(corresp_idx)
 
 
@@ -107,17 +109,24 @@ class ICP():
         self.R_history = np.array(self.R_history)
         self.t_history = np.array(self.t_history)
 
-        animator = ICPAnimator(self.X, self.Y, self.R_history, self.t_history, self.corresp_history)
+        animator = ICPAnimator(self.X, self.Y, self.R_history, self.t_history)
 
         animator.animate()
 
         def plot_rmse():
             fig, ax = plt.subplots()
-
-            ax.plot(self.rmse_history)
+            ax.plot(self.rmse_history, marker='o', linestyle='-')
+            ax.text(1, self.rmse_history[0], f"t0 RMSE: {self.rmse_history[0]:.2f}")
+            ax.text(23, 41, f"t30 RMSE: {self.rmse_history[30]:.2f}")
+            ax.set_title("RMSE over 30 Iterations of ICP")
+            ax.set_xlabel("Iteration")
+            ax.set_ylabel("RMSE")
+            plt.savefig("plots/prob2_rmse.png", dpi=300)
             plt.show()
 
         plot_rmse()
+
+        animator.plot_total_change()
 
 
 
@@ -125,8 +134,7 @@ class ICP():
         for i in range(self.num_iters):
             corresp_idx = self.estimate_correspondences()
             self.compute_optimal_rigid_registration(corresp_idx)
-            print(self.rmse())
-        
+            self.rmse_history.append(self.rmse())
         self.viz()
 
 

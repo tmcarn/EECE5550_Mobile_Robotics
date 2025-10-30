@@ -3,7 +3,7 @@ from matplotlib.animation import FuncAnimation, FFMpegWriter
 import numpy as np
 
 class ICPAnimator:
-    def __init__(self, X, Y, R_history, t_history, corresp_history):
+    def __init__(self, X, Y, R_history, t_history):
         """
         X: source point cloud (N, 3)
         Y: target point cloud (M, 3)
@@ -13,9 +13,7 @@ class ICPAnimator:
         self.Y = Y
         self.R_history = R_history
         self.t_history = t_history
-        self.corresp_history = corresp_history
         
-
         self.fig = plt.figure(figsize=(10, 8))
         self.ax = self.fig.add_subplot(111, projection='3d')
         
@@ -26,23 +24,9 @@ class ICPAnimator:
         self.ax.scatter(self.Y[:, 0], self.Y[:, 1], self.Y[:, 2],
                        c='red', marker='.', s=1, alpha=0.3, label='Target')
         
-        # Plot initial source points
+        # Plot initial source points with no transformation
         self.ax.scatter(self.X[:, 0], self.X[:, 1], self.X[:, 2],
                        c='blue', marker='.', s=1, alpha=0.6, label='Source')
-        
-        # corresp_idx = np.array(self.corresp_history[0])
-
-        # x_corresp_idx = corresp_idx[:,0]
-        # y_corresp_idx = corresp_idx[:,1]
-
-        # x_corresp_points = self.X[x_corresp_idx]
-        # y_corresp_points = self.Y[y_corresp_idx]
-        
-        # for i in range(y_corresp_points.shape[0]):
-        #     self.ax.plot([x_corresp_points[i, 0], y_corresp_points[i, 0]],
-        #             [x_corresp_points[i, 1], y_corresp_points[i, 1]],
-        #             [x_corresp_points[i, 2], y_corresp_points[i, 2]],
-        #             'g-', linewidth=0.5, alpha=0.5)
         
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -75,21 +59,6 @@ class ICPAnimator:
         self.ax.scatter(X_transformed[:, 0], X_transformed[:, 1], X_transformed[:, 2],
                        c='blue', marker='.', s=1, alpha=0.6, label='Source')
         
-        # Plot correspondences
-        corresp_idx = np.array(self.corresp_history[frame-1])
-
-        x_corresp_idx = corresp_idx[:,0]
-        y_corresp_idx = corresp_idx[:,1]
-
-        x_corresp_points = X_transformed[x_corresp_idx]
-        y_corresp_points = self.Y[y_corresp_idx]
-        
-        for i in range(y_corresp_points.shape[0]):
-            self.ax.plot([x_corresp_points[i, 0], y_corresp_points[i, 0]],
-                    [x_corresp_points[i, 1], y_corresp_points[i, 1]],
-                    [x_corresp_points[i, 2], y_corresp_points[i, 2]],
-                    'g-', linewidth=0.5, alpha=0.5)
-        
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
@@ -104,6 +73,26 @@ class ICPAnimator:
         self.ax.set_zlim(all_points[:, 2].min() - margin, all_points[:, 2].max() + margin)
         
         return self.ax,
+
+    def plot_total_change(self):
+        """Create side-by-side before and after comparison"""
+        
+        self.ax.clear()
+
+        fig = plt.figure(figsize=(16, 7))
+        
+        # BEFORE (left subplot)
+        self.ax = fig.add_subplot(121, projection='3d')
+        self.init_plot()
+        
+        # AFTER (right subplot)
+        self.ax = fig.add_subplot(122, projection='3d')
+        self.update(len(self.R_history) - 1)  # Use last frame
+        
+        plt.tight_layout()
+        plt.savefig('plots/prob2_before_after.png', dpi=300, bbox_inches='tight')
+        plt.show()
+
     
     def animate(self, interval=500, repeat=True):
         anim = FuncAnimation(self.fig, self.update, 
