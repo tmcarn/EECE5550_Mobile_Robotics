@@ -128,13 +128,12 @@ class ParticleFilter():
 
         return mean, cov
     
-    def save_stats_to_file(self, mean, cov, time_step, fname):
+    def save_stats_to_file(self, mean, cov, time_step, path):
         """
         Save mean and covariance statistics to a text file
-        """
-        path = os.path.join("stats", fname)
-        
-        with open(fname, 'a') as f:
+        """        
+        with open(path, 'a') as f:
+            f.write("\n")
             f.write(f"Statistics at t={time_step}\n")
             f.write(f"Number of particles: {self.num_samples}\n\n")
             
@@ -151,32 +150,36 @@ class ParticleFilter():
             f.write(f"  σ²_y: {cov[1,1]:.6f}\n")
             f.write(f"  σ_xy: {cov[0,1]:.6f}\n")
 
+            f.write(f"{"_"*50}")
+            f.write("\n")
+
     def plot_particles(self, X_history, time_steps, title, fname):
+        
         # Initalize Plot
         fig, ax = plt.subplots(figsize=(8, 6))
-
         ax.scatter(0,0, label="t=0")
+
+        stats_fname = fname.split('_')[0]+"_stats.txt"
+        stats_path = os.path.join("stats", stats_fname)
+        open(stats_path, 'w').close() # Erase Previous Content
 
         for i in range(X_history.shape[0]):
             X = X_history[i]
 
             mean, cov = self.calculate_stats(X)
-            stats_fname = fname.split('_')[0]+"_stats.txt"
-            self.save_stats_to_file(mean, cov, time_steps[i], stats_fname)
+            self.save_stats_to_file(mean, cov, time_steps[i], stats_path)
 
             x = X[:, 0, 2]
             y = X[:, 1, 2]
             theta = np.arctan2(X[:, 1, 0], X[:, 0, 0])
     
             # Calculate heading direction
-            # dx = np.cos(theta)
-            # dy = np.sin(theta)
+            dx = np.cos(theta)
+            dy = np.sin(theta)
 
             ax.scatter(x, y, label=f"t={time_steps[i]}", alpha=0.1)
-            ax.scatter(mean[0], mean[1], alpha=1, c='black')
-            # ax.quiver(x, y, dx, dy,
-            #     alpha=0.25, scale_units='xy', 
-            #     angles='xy', width=0.003)
+            ax.quiver(x, y, dx, dy, alpha=0.05, scale_units='xy', angles='xy', width=0.003) # Plots Particle Orientation
+            ax.scatter(mean[0], mean[1], alpha=1, c='cyan')
         
         ax.axis('equal')
         ax.grid(True)

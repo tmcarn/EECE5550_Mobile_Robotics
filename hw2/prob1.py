@@ -5,10 +5,12 @@ from matplotlib.patches import Circle, Ellipse
 class EKFSim():
     def __init__(self):
         self.t = 0
+        self.max_t = 40
+        self.dt = 0.5
 
         # Initial States
         self.true_pos = np.array([[0,10]]).T
-        self.landmarks = np.array([[5,5],[-5, 5]]) #[(l_1x,l_1y), l_2x, l2_y)]
+        self.landmarks = np.array([[5,5],[-5, 5]]) #[[l_1x,l_1y], [l_2x, l2_y]]
 
         self.estim_pos = np.array([[0,10]]).T # Column Vector for Position        
 
@@ -18,13 +20,21 @@ class EKFSim():
         self.Q = 0.5 * np.eye(2) # Measurement Uncertainty
 
         self.true_pos_history = []
-        self.prior_pos_history = []
         self.estim_pos_history = []
         self.estim_sigma_history = []
 
     def update_true_pos(self, t):
+        '''
+        This function keeps track of the true position of the robot (unknown to the actual robot)
+
+        Args:
+            t (int): current timestep
+
+        Returns:
+            self.true_pos (2,): updated true position
+        '''
         process_noise = np.random.multivariate_normal(np.zeros(2), self.R).reshape(-1, 1)
-        self.true_pos = self.true_pos + self.get_vel(t) + process_noise
+        self.true_pos = self.true_pos + (self.get_vel(t) * self.dt) + process_noise
 
     
     def measurment_model(self, pos, noisy:bool):
@@ -54,7 +64,7 @@ class EKFSim():
 
     
     def state_propagation_step(self, pos, t):
-        dead_rek_pos = pos + self.get_vel(t)
+        dead_rek_pos = pos + (self.get_vel(t) * self.dt)
         dead_rek_sigma = self.estim_sigma + self.R
         return dead_rek_pos, dead_rek_sigma
 
@@ -89,11 +99,13 @@ class EKFSim():
             raise Exception
         
     def run(self):
-        for t in range(1, 41):
+        for i in range(int(self.max_t/self.dt)):
+            self.t += 0.5 # Update current time
+
             # Update True Position
-            self.update_true_pos(t)
+            self.update_true_pos(self.t)
             # State Propagation
-            dead_rek_pos, dead_rek_sigma = self.state_propagation_step(self.estim_pos, t)
+            dead_rek_pos, dead_rek_sigma = self.state_propagation_step(self.estim_pos, self.t)
             # Correction Step
             self.correction_step(dead_rek_pos,dead_rek_sigma)
 
@@ -126,7 +138,7 @@ class EKFSim():
 
                 return major, minor, angle
 
-        for i in range(0, self.true_pos_history.shape[0], 4): # Intervals of t=5
+        for i in range(0, self.true_pos_history.shape[0], 8): # Intervals of t=5
             true_pos = self.true_pos_history[i]
             estim_pos = self.estim_pos_history[i]
             estim_sigma = self.estim_sigma_history[i]
@@ -140,7 +152,7 @@ class EKFSim():
             ax.add_patch(true_pos_plot)
             ax.text(true_pos[0],  # Label Point with time step
                     true_pos[1], 
-                    f"t={i}",
+                    f"t={i/2}",
                     fontsize=5,
                     fontweight='bold', 
                     color='white',
