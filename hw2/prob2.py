@@ -20,18 +20,21 @@ class ICP():
 
         # Set Hyperparameters
         self.max_distance = 0.25
-        self.num_iters = 30
+        self.num_iters = 30  # Increasing num_iters to ~125 will give nea perfect convergence
 
         X_path = "/Users/theo/EECE 5550/hw2/point_cloud_data/pclX.txt"
         Y_path = "/Users/theo/EECE 5550/hw2/point_cloud_data/pclY.txt"
-
+        
+        # Convert txt files to np arrays
         self.X = self.parse_point_cloud(X_path)
         self.Y = self.parse_point_cloud(Y_path)
 
-        # Initial Error
-        self.rmse_history.append(self.rmse())
-
+        # Initialize KDtree for faster closest point lookups
         self.Y_kdtree = KDTree(self.Y)
+
+        # Initial Error (without any transformation)
+        corresp_idx = self.estimate_correspondences()
+        self.rmse_history.append(self.rmse(corresp_idx))
 
     def parse_point_cloud(self, pcl_path):
         '''
@@ -48,6 +51,10 @@ class ICP():
         return coords
 
     def estimate_correspondences(self):
+        '''
+        Given an initial R and t parameters, this function generates a list of correspondences between pointclouds
+        based on euclidean distance
+        '''
         corresp_idx = []
 
         X_trans = (self.R @ self.X.T).T + self.t
@@ -97,13 +104,18 @@ class ICP():
         self.R_history.append(self.R)
         self.t_history.append(self.t)
 
-    def rmse(self):
+    def rmse(self, corresp_idx):
         X_trans = (self.R @ self.X.T).T + self.t
-        difference = self.Y - X_trans
-        distance = np.linalg.norm(difference) ** 2
+
+        X_trans_corresp = X_trans[corresp_idx[:,0]]
+        Y_corresp = self.Y[corresp_idx[:,1]]
+
+        difference = Y_corresp - X_trans_corresp
+        distance = np.linalg.norm(difference, axis=1) ** 2
         avg_dist = np.mean(distance)
         rmse = np.sqrt(avg_dist)
         return rmse
+
 
     def viz(self):
         self.R_history = np.array(self.R_history)
@@ -116,8 +128,15 @@ class ICP():
         def plot_rmse():
             fig, ax = plt.subplots()
             ax.plot(self.rmse_history, marker='o', linestyle='-')
-            ax.text(1, self.rmse_history[0], f"t0 RMSE: {self.rmse_history[0]:.2f}")
-            ax.text(23, 41, f"t30 RMSE: {self.rmse_history[30]:.2f}")
+
+            # Display RMSE values
+            plt.text(0.95, 0.95, f"t0 RMSE: {self.rmse_history[0]:.4f}\nt30 RMSE: {self.rmse_history[30]:.4f}",
+                    transform=plt.gca().transAxes,
+                    fontsize=10,
+                    verticalalignment='top',
+                    horizontalalignment='right',
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            
             ax.set_title("RMSE over 30 Iterations of ICP")
             ax.set_xlabel("Iteration")
             ax.set_ylabel("RMSE")
@@ -134,7 +153,11 @@ class ICP():
         for i in range(self.num_iters):
             corresp_idx = self.estimate_correspondences()
             self.compute_optimal_rigid_registration(corresp_idx)
-            self.rmse_history.append(self.rmse())
+
+            # Re-estimate correspondences with new R, t for accurate RMSE
+            corresp_idx_updated = self.estimate_correspondences()
+            self.rmse_history.append(self.rmse(corresp_idx_updated))
+
         self.viz()
 
 

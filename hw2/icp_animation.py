@@ -22,11 +22,11 @@ class ICPAnimator:
         
         # Plot target points (fixed)
         self.ax.scatter(self.Y[:, 0], self.Y[:, 1], self.Y[:, 2],
-                       c='red', marker='.', s=1, alpha=0.3, label='Target')
+                       c='tab:red', s=1, alpha=0.5, label='Target')
         
         # Plot initial source points with no transformation
         self.ax.scatter(self.X[:, 0], self.X[:, 1], self.X[:, 2],
-                       c='blue', marker='.', s=1, alpha=0.6, label='Source')
+                       c='tab:blue', s=1, alpha=0.5, label='Source')
         
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -48,7 +48,7 @@ class ICPAnimator:
         
         # Plot target (fixed)
         self.ax.scatter(self.Y[:, 0], self.Y[:, 1], self.Y[:, 2],
-                       c='red', marker='.', s=1, alpha=0.3, label='Target')
+                       c='tab:red', s=1, alpha=0.5, label='Target')
         
         
         R = self.R_history[frame]
@@ -57,7 +57,15 @@ class ICPAnimator:
         
         # Plot transformed source
         self.ax.scatter(X_transformed[:, 0], X_transformed[:, 1], X_transformed[:, 2],
-                       c='blue', marker='.', s=1, alpha=0.6, label='Source')
+                       c='tab:blue', s=1, alpha=0.5, label='Source')
+        
+        # Display R and t values for each iteration
+        self.ax.text2D(0.95, 0.95, f"R: {np.array2string(R, precision=3)}\n\nt: {np.array2string(t, precision=3)}",
+                    transform=plt.gca().transAxes,
+                    fontsize=10,
+                    verticalalignment='top',
+                    horizontalalignment='right',
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -83,7 +91,7 @@ class ICPAnimator:
         
         # BEFORE (left subplot)
         self.ax = fig.add_subplot(121, projection='3d')
-        self.init_plot()
+        self.update(0)
         
         # AFTER (right subplot)
         self.ax = fig.add_subplot(122, projection='3d')

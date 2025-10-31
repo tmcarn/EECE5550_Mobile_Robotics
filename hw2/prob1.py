@@ -165,10 +165,9 @@ class EKFSim():
             
             major, minor, angle = get_cov_ellipse(estim_sigma)
 
-            true_pos_plot = Circle(true_pos, radius=0.5, facecolor="purple")
             estim_certainty_plot = Ellipse(estim_pos, width=major, height=minor, angle=angle, facecolor="orange", alpha=0.2)
             
-            # ax.add_patch(true_pos_plot)
+            # Plot True Position
             ax.scatter(true_pos[0], true_pos[1], c="tab:blue", s=200)
             ax.text(true_pos[0],  # Label Point with time step
                     true_pos[1], 
@@ -180,15 +179,14 @@ class EKFSim():
                     va='center'
                     )
             
+            # Plot Estimated Positon w/ EKF Filter
             ax.scatter(estim_pos[0], estim_pos[1], c="orange")
+            # Add Uncertainty Visual
             ax.add_patch(estim_certainty_plot)
             
-
-        # Must set axis limits when using patches
-        # ax.axis("off")
         ax.grid()
         ax.set_axisbelow(True)
-        
+
         ax.set_xlim((-10,15))
         ax.set_ylim((-15,10))
         ax.set_aspect('equal')
@@ -197,10 +195,6 @@ class EKFSim():
         plt.show()
     
 
-
-            
-
-# Unit Tests:
 sim = EKFSim()
 sim.run()
 sim.viz()

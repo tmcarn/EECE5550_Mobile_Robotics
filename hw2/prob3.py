@@ -70,16 +70,13 @@ class ParticleFilter():
         return dead_rek
     
     def measurement_update(self, X_prior, obs_measurement):
-        # measurement_noise = np.random.multivariate_normal(np.zeros(2), self.measurement_cov)
-        # obs_measurement = true_measurement + measurement_noise
-
         prior_position = X_prior[:, :2, 2] # Extracts translation from each SE(2) matrix
         innovation = np.linalg.norm(obs_measurement - prior_position, axis=1) # Calculates l2 norm between observed measurement and predicted measurement
         importance_factor = np.exp(-(innovation ** 2) / (2 * (self.sigma_p ** 2)))
         # Normalize Importance Factors
         importance_factor = importance_factor/np.sum(importance_factor)
 
-        # Multinormal Resampling
+        # Multinomial Resampling
         cumsum = np.cumsum(importance_factor)
         indices = np.searchsorted(cumsum, np.random.uniform(0, 1, self.num_samples)) 
 
@@ -188,7 +185,7 @@ class ParticleFilter():
         ax.set_ylabel('Y axis')
         ax.legend()
         ax.grid(True, alpha=0.3)
-        plt.savefig(os.path.join("plots", fname))
+        plt.savefig(os.path.join("plots", fname), dpi=300)
         plt.show()
 
 
