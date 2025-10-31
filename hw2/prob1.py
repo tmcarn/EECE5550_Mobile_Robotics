@@ -26,12 +26,6 @@ class EKFSim():
     def update_true_pos(self, t):
         '''
         This function keeps track of the true position of the robot (unknown to the actual robot)
-
-        Args:
-            t (int): current timestep
-
-        Returns:
-            self.true_pos (2,): updated true position
         '''
         process_noise = np.random.multivariate_normal(np.zeros(2), self.R)
         self.true_pos = self.true_pos + (self.get_vel(t) * self.dt) + process_noise
@@ -39,12 +33,8 @@ class EKFSim():
     
     def measurment_model(self, pos, noisy:bool):
         '''
-        Input: [x,y] position
-        Output: [d1, d1] (distance to landmark_1 and landmark_2)
-
-        L2 Distance (optionally) plus sensor noise delta ~ N (0, Q)
+        L2 Distance (optionally plus sensor noise delta ~ N (0, Q))
         '''
-        # pos_mat = np.concatenate([pos.T, pos.T], axis=0)
         difference_vectors = pos - self.landmarks
         measurement = np.linalg.norm(difference_vectors, axis=1)
 
@@ -56,7 +46,9 @@ class EKFSim():
         
     
     def get_measurement_jacobian(self, pos):
-        # pos_mat = np.concatenate([pos.T, pos.T], axis=0)
+        '''
+        Computes measurement jacobian based on current position and the position of the landmarks
+        '''
         difference_vectors = pos - self.landmarks
         distances = self.measurment_model(pos, noisy=False)
         H = difference_vectors / distances[:, np.newaxis]
@@ -64,12 +56,18 @@ class EKFSim():
 
     
     def state_propagation_step(self, pos, t):
+        '''
+        Performs Dead Reckoning to calculate the prior
+        '''
         dead_rek_pos = pos + (self.get_vel(t) * self.dt)
         dead_rek_sigma = self.estim_sigma + self.R
         return dead_rek_pos, dead_rek_sigma
 
 
     def correction_step(self, dead_rek_pos, dead_rek_sigma):
+        '''
+        Combines prior from state propagation, with innovation from measurement model to estimate posterior
+        '''
         H = self.get_measurement_jacobian(dead_rek_pos)
         k_gain = dead_rek_sigma @ H.T @ np.linalg.inv(H @ dead_rek_sigma @ H.T + self.Q)
         # Calculate Innovation (difference between true measurement and expected measurement)

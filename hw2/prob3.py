@@ -35,6 +35,8 @@ class ParticleFilter():
 
     def propagation(self, X_posterior, t1, t2, cmd_wheel_vels):
         '''
+        This function uses the motion model on a set of particles, all with slightly different wheel velocities
+        
         Inputs:
              X_posterior : Esitmate poses from t-1
 
@@ -55,6 +57,9 @@ class ParticleFilter():
 
     def motion_model(self, true_wheel_vels_i, x_i, dt):
         '''
+        This function takes in one particle, with one set of wheel velocities, 
+        and returns the new postion based on dead reckoning
+
         true_wheel_vels_i: [true_phi_r, true_phi_l]
         '''
         x_dot = self.r/2 * (np.sum(true_wheel_vels_i))
@@ -70,6 +75,9 @@ class ParticleFilter():
         return dead_rek
     
     def measurement_update(self, X_prior, obs_measurement):
+        '''
+        Resamples particles based on the probability of obtaining the observed measurement from that positon
+        '''
         prior_position = X_prior[:, :2, 2] # Extracts translation from each SE(2) matrix
         innovation = np.linalg.norm(obs_measurement - prior_position, axis=1) # Calculates l2 norm between observed measurement and predicted measurement
         importance_factor = np.exp(-(innovation ** 2) / (2 * (self.sigma_p ** 2)))
@@ -86,6 +94,9 @@ class ParticleFilter():
         return X_posterior
 
     def run_propagation(self, cmd_wheel_vels, time_steps):
+        '''
+        Runs dead reckoning with out any filtering
+        '''
         prev_t = 0
 
         # Initial Position
@@ -126,9 +137,9 @@ class ParticleFilter():
         return mean, cov
     
     def save_stats_to_file(self, mean, cov, time_step, path):
-        """
-        Save mean and covariance statistics to a text file
-        """        
+        '''
+        Saves mean and covariance statistics to a text file
+        '''     
         with open(path, 'a') as f:
             f.write("\n")
             f.write(f"Statistics at t={time_step}\n")
