@@ -1,0 +1,24 @@
+Camera Calibration Parameters
+==================================================
+
+Intrinsic Calibration Matrix (K):
+  [1473.396714,   0.000000, 546.319951]
+  [  0.000000, 1468.212739, 943.040516]
+  [  0.000000,   0.000000,   1.000000]
+
+Individual Parameters:
+  fx (focal length x) = 1473.396714 pixels
+  fy (focal length y) = 1468.212739 pixels
+  px (principal point x) = 546.319951 pixels
+  py (principal point y) = 943.040516 pixels
+
+Distortion Coefficients:
+  k1 =   0.251948 (radial)
+  k2 =  -1.107177 (radial)
+  p1 =  -0.002830 (tangential)
+  p2 =   0.005243 (tangential)
+  k3 =   1.687330 (radial)
+
+RMS Reprojection Error: 1.481178 pixels
+Image Size: 1080 x 1920 pixels
+Number of Calibration Images: 7
