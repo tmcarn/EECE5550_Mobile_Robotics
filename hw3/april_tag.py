@@ -31,7 +31,10 @@ img_path = "vslam/frame_0.jpg"
 img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
 # Detect Corners
-detections = detector.detect(img)
+detections = detector.detect(img=img, 
+                             estimate_tag_pose=True, 
+                             camera_params=(fx,fy, px, py),
+                             tag_size=tag_width)
 
 # Find April Tag 0
 tag_id = 0
@@ -43,25 +46,49 @@ for i, detection in enumerate(detections):
         break
 
 tag_id = detections[id_idx]
+
 corners_2d = tag_id.corners
+
+# AprilTag initial pose estimate (in camera frame)
+R_camera_tag = detection.pose_R
+t_camera_tag = detection.pose_t.flatten()
+
+# Invert to get camera pose in tag frame
+init_pose_R = R_camera_tag.T
+init_pose_t = -init_pose_R @ t_camera_tag
 
 # Initialize Camera Calibration
 skew = 0.0
 cam_cal = gtsam.Cal3_S2(fx=fx, fy=fy, s=skew, u0=px, v0=py)
 
-noise = gtsam.noiseModel.Isotropic.Sigma(2, 0.1)
+measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 0.1)
+landmark_constraint = gtsam.noiseModel.Constrained.All(3) # Landmarks rigidly fixed to world frame
 
-G = gtsam.NonlinearFactorGraph()
+graph = gtsam.NonlinearFactorGraph()
+initial_estimates = gtsam.Values()
+
+# Build Up Graph
+init_pose = gtsam.Pose3(gtsam.Rot3(init_pose_R), 
+                        gtsam.Point3(init_pose_t[0], init_pose_t[1], init_pose_t[2]))
+
+initial_estimates.insert(X(0), init_pose)
 
 for i in range(4):
     point_2d = gtsam.Point2(x=corners_2d[i,0], y=corners_2d[i,1])
     point_3d = gtsam.Point3(x=corners_3d[i,0], y=corners_3d[i,1], z=corners_3d[i,2])
 
-    factor = gtsam.GenericProjectionFactorCal3_S2(point_2d, noise, X(0), L(i), cam_cal)
-    G.add(factor)
+    factor = gtsam.GenericProjectionFactorCal3_S2(point_2d, measurement_noise, X(0), L(i), cam_cal)
+    prior_factor = gtsam.PriorFactorPoint3(L(i), point_3d, landmark_constraint)
+
+    initial_estimates.insert(L(i), point_3d)
+    graph.add(factor)
+
+optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_estimates)
+result = optimizer.optimize()
 
 
-
+print(f"Initial Error: {graph.error(initial_estimates)}")
+print(f"Final Error  : {graph.error(result)}")
 
 
 
