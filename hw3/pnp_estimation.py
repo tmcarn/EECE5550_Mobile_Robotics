@@ -4,7 +4,6 @@ from pupil_apriltags import Detector
 import gtsam
 from gtsam.symbol_shorthand import X, L
 import gtsam.utils.plot as gtsam_plot
-
 import matplotlib.pyplot as plt
 
 # Load in Camera Calibration Parameters
@@ -68,6 +67,7 @@ init_pose_t = -init_pose_R @ t_camera_tag
 skew = 0.0
 cam_cal = gtsam.Cal3_S2(fx=fx, fy=fy, s=skew, u0=px, v0=py)
 
+# Initialize Noise Models
 measurement_noise = gtsam.noiseModel.Isotropic.Sigma(2, 0.1)
 landmark_constraint = gtsam.noiseModel.Constrained.All(3) # Landmarks rigidly fixed to world frame
 
@@ -77,6 +77,7 @@ initial_estimates = gtsam.Values()
 # Build Up Graph
 init_pose = gtsam.Pose3(gtsam.Rot3(init_pose_R), 
                         gtsam.Point3(init_pose_t[0], init_pose_t[1], init_pose_t[2]))
+
 
 initial_estimates.insert(X(0), init_pose)
 
@@ -89,6 +90,8 @@ for i in range(4):
 
     initial_estimates.insert(L(i), point_3d)
     graph.add(factor)
+    graph.add(prior_factor)
+    
 
 optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_estimates)
 result = optimizer.optimize()
