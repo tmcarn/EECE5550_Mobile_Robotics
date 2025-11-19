@@ -1,3 +1,6 @@
 hw3/calibration_images/
+hw3/corners
 hw3/vslam/
+hw3/*.mp4
+
 
