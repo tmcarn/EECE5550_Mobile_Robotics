@@ -88,6 +88,7 @@ class AltitudeControl:
 
         return np.array(h_pos_hist), np.array(h_acc_hist), x_axis
     
+    
 def format_plot(ax1, ax2, title1, title2, path):
     # Plot Setpoint
     ax1.axhline(y=1, color='r', linestyle='--', label='Setpoint')
@@ -195,5 +196,3 @@ ax2.plot(x_axis, h_acc_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Ki={alt_ctrl.Ki:.2f},
 t1 = "PID Controller: Altitude over Time (Noisy Actuation)"
 t2 = "PID Controller: Acceleration over Time (Noisy Actuation)"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PID_Noisy.png")
-
-
