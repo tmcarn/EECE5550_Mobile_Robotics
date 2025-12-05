@@ -73,7 +73,7 @@ class AltitudeControl:
     
     def run_controller(self):
         h_pos_hist = [] 
-        h_acc_hist = []
+        h_vel_hist = []
         for i in range(self.n_steps):
             # Generate Actuation
             u = self.control_step()
@@ -82,11 +82,11 @@ class AltitudeControl:
 
             # Update history for plotting
             h_pos_hist.append(self.h_pos)
-            h_acc_hist.append(self.h_acc)
+            h_vel_hist.append(self.h_vel)
 
         x_axis = np.arange(self.n_steps) * self.dt
 
-        return np.array(h_pos_hist), np.array(h_acc_hist), x_axis
+        return np.array(h_pos_hist), np.array(h_vel_hist), x_axis
     
     
 def format_plot(ax1, ax2, title1, title2, path):
@@ -99,7 +99,7 @@ def format_plot(ax1, ax2, title1, title2, path):
     ax1.set_xlabel("seconds")
 
     ax2.set_title(title2)
-    ax2.set_ylabel("Acceleration ($m/s^2$)")
+    ax2.set_ylabel("Velocity ($m/s$)")
     ax2.set_xlabel("seconds")
 
     ax1.grid(True, alpha=0.3)
@@ -122,14 +122,14 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,9)) # Create a figure with two s
 Kps = [5, 15, 50]
 for Kp in Kps:
     alt_ctrl = AltitudeControl((Kp, 0, 0)) # No integral or derivative terms
-    h_pos_hist, h_acc_hist, x_axis = alt_ctrl.run_controller()
+    h_pos_hist, h_vel_hist, x_axis = alt_ctrl.run_controller()
 
     # Plot Position over time
     ax1.plot(x_axis, h_pos_hist, label=f"Kp={Kp}")
-    ax2.plot(x_axis, h_acc_hist, label=f"Kp={Kp}")
+    ax2.plot(x_axis, h_vel_hist, label=f"Kp={Kp}")
 
 t1 = "P Controller: Altitude over Time"
-t2 = "P Controller: Acceleration over Time"
+t2 = "P Controller: Velocity over Time"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PControllerPlot.png")
 # ______________________________________________________________________________
 
@@ -138,14 +138,14 @@ format_plot(ax1, ax2, t1, t2, "hw4/plots/PControllerPlot.png")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,9)) # Create a figure with two subplots side by side
 
 alt_ctrl = AltitudeControl(conv_time=3, zeta=0.5) # UNDERDAMPED
-h_pos_hist, h_acc_hist, x_axis = alt_ctrl.run_controller()
+h_pos_hist, h_vel_hist, x_axis = alt_ctrl.run_controller()
 
 # Plot Position over time
 ax1.plot(x_axis, h_pos_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
-ax2.plot(x_axis, h_acc_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
+ax2.plot(x_axis, h_vel_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
 
 t1 = rf"Underdamped PD Controller: Altitude over Time ($\zeta = {alt_ctrl.zeta}$, $\omega = {alt_ctrl.omega}$)"
-t2 = rf"Underdamped PD Controller: Acceleration over Time ($\zeta = {alt_ctrl.zeta}$, $\omega = {alt_ctrl.omega}$)"
+t2 = rf"Underdamped PD Controller: Velocity over Time ($\zeta = {alt_ctrl.zeta}$, $\omega = {alt_ctrl.omega}$)"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Underdamped.png")
 # ______________________________________________________________________________
 
@@ -154,14 +154,14 @@ format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Underdamped.png")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,9)) # Create a figure with two subplots side by side
 
 alt_ctrl = AltitudeControl(conv_time=3, zeta=1.5) # OVERDAMPED
-h_pos_hist, h_acc_hist, x_axis = alt_ctrl.run_controller()
+h_pos_hist, h_vel_hist, x_axis = alt_ctrl.run_controller()
 
 # Plot Position over time
 ax1.plot(x_axis, h_pos_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
-ax2.plot(x_axis, h_acc_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
+ax2.plot(x_axis, h_vel_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
 
 t1 = rf"Overdamped PD Controller: Altitude over Time ($\zeta = {alt_ctrl.zeta:.2f}$, $\omega = {alt_ctrl.omega:.2f}$)"
-t2 = rf"Overdamped PD Controller: Acceleration over Time ($\zeta = {alt_ctrl.zeta:.2f}$, $\omega = {alt_ctrl.omega:.2f}$)"
+t2 = rf"Overdamped PD Controller: Velocity over Time ($\zeta = {alt_ctrl.zeta:.2f}$, $\omega = {alt_ctrl.omega:.2f}$)"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Overdamped.png")
 # ______________________________________________________________________________
 
@@ -170,14 +170,14 @@ format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Overdamped.png")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,9)) # Create a figure with two subplots side by side
 
 alt_ctrl = AltitudeControl(conv_time=3, zeta=0.5, actuator_noise=True) # UNDERDAMPED
-h_pos_hist, h_acc_hist, x_axis = alt_ctrl.run_controller()
+h_pos_hist, h_vel_hist, x_axis = alt_ctrl.run_controller()
 
 # Plot Position over time
 ax1.plot(x_axis, h_pos_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
-ax2.plot(x_axis, h_acc_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
+ax2.plot(x_axis, h_vel_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Kd={alt_ctrl.Kd:.2f}")
 
 t1 = "PD Controller: Altitude over Time (Noisy Actuation)"
-t2 = "PD Controller: Acceleration over Time (Noisy Actuation)"
+t2 = "PD Controller: Velocity over Time (Noisy Actuation)"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Noisy.png")
 # ______________________________________________________________________________
 
@@ -186,13 +186,13 @@ format_plot(ax1, ax2, t1, t2, "hw4/plots/PD_Noisy.png")
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,9)) # Create a figure with two subplots side by side
 
 # Set a non-negative integral gain
-alt_ctrl = AltitudeControl((0,30,0), conv_time=3, zeta=0.5, actuator_noise=True)
-h_pos_hist, h_acc_hist, x_axis = alt_ctrl.run_controller()
+alt_ctrl = AltitudeControl((0,10,0), conv_time=3, zeta=0.5, actuator_noise=True)
+h_pos_hist, h_vel_hist, x_axis = alt_ctrl.run_controller()
 
 # Plot Position over time
 ax1.plot(x_axis, h_pos_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Ki={alt_ctrl.Ki:.2f}, Kd={alt_ctrl.Kd:.2f}")
-ax2.plot(x_axis, h_acc_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Ki={alt_ctrl.Ki:.2f}, Kd={alt_ctrl.Kd:.2f}")
+ax2.plot(x_axis, h_vel_hist, label=f"Kp={alt_ctrl.Kp:.2f}, Ki={alt_ctrl.Ki:.2f}, Kd={alt_ctrl.Kd:.2f}")
 
 t1 = "PID Controller: Altitude over Time (Noisy Actuation)"
-t2 = "PID Controller: Acceleration over Time (Noisy Actuation)"
+t2 = "PID Controller: Velocity over Time (Noisy Actuation)"
 format_plot(ax1, ax2, t1, t2, "hw4/plots/PID_Noisy.png")

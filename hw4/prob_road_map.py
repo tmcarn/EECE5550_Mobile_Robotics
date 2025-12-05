@@ -77,7 +77,7 @@ class PRM:
 
         plt.title('PRM Roadmap')
         plt.axis('off')
-        plt.tight_layout()
+        plt.tight_layout(pad=0.25)
         plt.savefig("hw4/plots/PRM.png")
         plt.show()
                 
